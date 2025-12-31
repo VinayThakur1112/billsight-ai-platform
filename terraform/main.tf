@@ -9,15 +9,10 @@ terraform {
   }
 }
 
-provider "google" {
-  project = var.project_id
-  region  = var.region
-}
-
 # variables
 variable "project_id" {
   type        = string
-  description = "332299527712"
+  description = "project id"
 }
 
 variable "project_name" {
@@ -34,6 +29,11 @@ variable "region" {
 variable "environment" {
   type        = string
   description = "prod"
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
 }
 
 
@@ -209,5 +209,16 @@ resource "google_service_account" "ocr" {
 resource "google_service_account" "postprocess" {
   account_id   = "postprocess-sa"
   display_name = "Postprocess Service Account"
+}
+
+
+# artifact registry
+resource "google_artifact_registry_repository" "billsight_repo" {
+  provider      = google
+  location      = var.region
+  repository_id = "billsight-repo"
+  description   = "Docker repository for billsight project"
+  format        = "DOCKER"
+  project       = var.project_name
 }
 
