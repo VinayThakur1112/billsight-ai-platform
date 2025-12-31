@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestion
+  template:
+    metadata:
+      labels:
+        app: ingestion
+    spec:
+      serviceAccountName: ingestion-sa
+      containers:
+      - name: ingestion
+        image: asia-south1-docker.pkg.dev/billsight-ai-platform/billsight-repo/ingestion:v1
+        imagePullPolicy: Always
+        envFrom:
+        - secretRef:
+            name: app-config-v1

@@ -1,3 +1,17 @@
+"""
+Bill Ingestion Service
+
+This module provides a FastAPI application for processing bill 
+uploads.
+It handles:
+1. Receiving files via HTTP POST requests
+2. Uploading files to Google Cloud Storage (GCS) with organized 
+paths
+3. Attaching metadata to the GCS objects
+4. Publishing notification messages to Google Cloud Pub/Sub for 
+downstream processing
+"""
+
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from google.cloud import storage, pubsub_v1
 from datetime import datetime
@@ -16,6 +30,8 @@ BUCKET_NAME = os.getenv("BUCKET_NAME")
 PUBSUB_TOPIC = os.getenv("PUBSUB_TOPIC")
 PIPELINE_VERSION = os.getenv("PIPELINE_VERSION")
 
+
+# Initialize FastAPI app
 app = FastAPI()
 
 # Initialize GCS client
@@ -24,12 +40,38 @@ bucket = storage_client.bucket(BUCKET_NAME)
 
 # Initialize Pub/Sub client
 publisher = pubsub_v1.PublisherClient()
+# Construct the full Pub/Sub topic path
 topic_path = publisher.topic_path(
     os.getenv("PROJECT_ID"), PUBSUB_TOPIC)
 
 
 @app.post("/upload-bill")
 async def upload_bill(file: UploadFile = File(...)):
+    """
+    Upload a bill file to the storage bucket and trigger 
+    processing.
+
+    This endpoint:
+    - Accepts a file upload
+    - Generates a unique path for the file in GCS based on 
+    the current date
+    - Uploads the file to the configured GCS bucket
+    - Sets initial metadata for the file (processing state,
+     version, etc.)
+    - Publishes a message to Pub/Sub to trigger the extraction 
+    pipeline
+
+    Args:
+        file (UploadFile): The bill document to upload.
+
+    Returns:
+        dict: detailed status and storage path of the uploaded 
+        file.
+
+    Raises:
+        HTTPException: 500 error if any step of the upload or 
+        publication fails.
+    """
     try:
         logger.info("Uploading bill: %s", file.filename)
         # Create path with date prefix
