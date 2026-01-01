@@ -12,7 +12,7 @@ terraform {
 # variables
 variable "project_id" {
   type        = string
-  description = "project id"
+  description = "GCP Project ID"
 }
 
 variable "project_name" {
@@ -184,6 +184,7 @@ resource "google_container_node_pool" "cpu_pool" {
   }
 }
 
+# iam binding
 resource "google_service_account_iam_binding" "ingestion_wi" {
   service_account_id = google_service_account.ingestion.name
   role               = "roles/iam.workloadIdentityUser"
@@ -222,3 +223,88 @@ resource "google_artifact_registry_repository" "billsight_repo" {
   project       = var.project_name
 }
 
+provider "kubernetes" {
+  host                   = "https://${google_container_cluster.primary.endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(
+    google_container_cluster.primary.master_auth[0].cluster_ca_certificate
+  )
+}
+
+data "google_client_config" "default" {}
+
+resource "kubernetes_service_account_v1" "primary" {
+  depends_on = [google_container_cluster.primary]
+  metadata {
+    name      = "ingestion-ksa"
+    namespace = "default"
+
+    annotations = {
+      "iam.gke.io/gcp-service-account" = google_service_account.ingestion.email
+    }
+  }
+}
+
+resource "kubernetes_service_account_v1" "ocr" {
+  depends_on = [google_container_cluster.primary]
+  metadata {
+    name      = "ocr-ksa"
+    namespace = "default"
+
+    annotations = {
+      "iam.gke.io/gcp-service-account" = google_service_account.ocr.email
+    }
+  }
+}
+
+resource "kubernetes_service_account_v1" "postprocess" {
+  depends_on = [google_container_cluster.primary]
+  metadata {
+    name      = "postprocess-ksa"
+    namespace = "default"
+
+    annotations = {
+      "iam.gke.io/gcp-service-account" = google_service_account.postprocess.email
+    }
+  }
+}
+
+# access to GCP service accounts to GCS bucket
+resource "google_storage_bucket_iam_member" "ingestion_gcs_upload" {
+  bucket = "${var.project_name}-bills"
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
+# access to GCP service accounts to Pub/Sub topic
+resource "google_pubsub_topic_iam_member" "ingestion_pubsub_publish" {
+  topic  = google_pubsub_topic.bill_upload.name
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
+# Kubernetes Config Map
+resource "kubernetes_config_map_v1" "app_config" {
+  metadata {
+    name      = "app-config-v1"
+    namespace = "default"
+  }
+
+  data = {
+    LOG_LEVEL           = "INFO"
+    PROJECT_ID          = "billsight-ai-platform"
+    BUCKET_NAME         = "billsight-ai-platform-bills"
+    PUBSUB_TOPIC        = "bill-upload-events"
+    PIPELINE_VERSION    = "v1"
+  }
+}
+
+# Grant GKE nodes permission to pull images from Artifact Registry
+resource "google_artifact_registry_repository_iam_member" "gke_pull_images" {
+  project    = var.project_name
+  location   = var.region
+  repository = "billsight-repo"
+
+  role   = "roles/artifactregistry.reader"
+  member = "serviceAccount:${var.project_id}-compute@developer.gserviceaccount.com"
+}

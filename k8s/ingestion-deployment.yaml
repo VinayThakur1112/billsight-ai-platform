@@ -11,13 +11,12 @@ spec:
     metadata:
       labels:
         app: ingestion
-        
     spec:
-      serviceAccountName: ingestion-sa
+      serviceAccountName: ingestion-ksa
       containers:
       - name: ingestion
-        image: asia-south1-docker.pkg.dev/billsight-ai-platform/billsight-repo/ingestion:v1
+        image: asia-south1-docker.pkg.dev/billsight-ai-platform/billsight-repo/ingestion:v2
         imagePullPolicy: Always
         envFrom:
-        - secretRef:
+        - configMapRef:
             name: app-config-v1

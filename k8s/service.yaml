@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-svc
+spec:
+  selector:
+    app: ingestion
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: LoadBalancer

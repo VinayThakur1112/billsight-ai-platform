@@ -8,8 +8,12 @@ WORKDIR /app
 COPY requirements_ingestion.txt .
 RUN pip install --no-cache-dir -r requirements_ingestion.txt
 
-COPY /ingestion app/ingestion
-COPY /common app/common
+
+RUN mkdir -p ingestion
+RUN mkdir -p common
+
+COPY /ingestion ingestion
+COPY /common common
 
 # Expose port
 EXPOSE 8000
