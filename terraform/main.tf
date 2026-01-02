@@ -22,6 +22,7 @@ provider "google-beta" {
   region  = var.region
 }
 
+
 ########################
 # VARIABLES
 ########################
@@ -50,6 +51,7 @@ resource "google_project_service" "required_apis" {
   service = each.value
 }
 
+
 ########################
 # VPC NETWORK
 ########################
@@ -65,6 +67,7 @@ resource "google_project_service" "required_apis" {
 #   network       = google_compute_network.vpc.id
 #   private_ip_google_access = true
 # }
+
 
 ########################
 # ARTIFACT REGISTRY
@@ -88,6 +91,7 @@ provider "kubernetes" {
   )
 }
 
+
 ########################
 # SERVICE ACCOUNT
 ########################
@@ -109,6 +113,7 @@ resource "google_project_service" "gke" {
   project = var.project_id
   service = "container.googleapis.com"
 }
+
 
 ########################
 # GKE PRIVATE CLUSTER
@@ -176,6 +181,7 @@ resource "google_service_account_iam_member" "ingestion_wi" {
   depends_on = [google_container_cluster.gke]
 }
 
+
 ########################
 # Kubernetes Service Accounts
 ########################
@@ -231,6 +237,9 @@ resource "kubernetes_config_map_v1" "app_config" {
     BUCKET_NAME         = "billsight-ai-project-bills"
     PUBSUB_TOPIC        = "bill-upload-events"
     PIPELINE_VERSION    = "v1"
+    BQ_DATASET          = "billsight_ocr"
+    BQ_TABLE            = "ocr_bills"
+    DOC_AI_PROCESSOR    = google_document_ai_processor.bills_ocr.name
   }
 }
 
@@ -249,6 +258,7 @@ resource "google_storage_bucket" "buckets" {
     enabled = true
   }
 }
+
 
 ########################
 # PUB/SUB TOPIC
@@ -290,6 +300,29 @@ resource "google_bigquery_table" "ocr_table" {
   {"name":"id","type":"STRING","mode":"REQUIRED"},
   {"name":"text","type":"STRING","mode":"NULLABLE"},
   {"name":"created_at","type":"TIMESTAMP","mode":"NULLABLE"}
+]
+EOF
+}
+
+resource "google_bigquery_table" "billing_ocr_data" {
+  dataset_id = google_bigquery_dataset.ocr.dataset_id
+  table_id   = "billing_ocr_data"
+  deletion_protection = false
+  schema     = <<EOF
+[
+  {"name":"correlation_id","type":"STRING","mode":"REQUIRED"},
+  {"name":"file_name","type":"STRING","mode":"NULLABLE"},
+  {"name":"text","type":"STRING","mode":"NULLABLE"},
+  {"name":"page_count","type":"STRING","mode":"NULLABLE"},
+  {"name":"model_used","type":"STRING","mode":"NULLABLE"},
+  {
+    "name":"logtime",
+    "type":"TIMESTAMP",
+    "mode":"NULLABLE", 
+    "defaultValueExpression":"CURRENT_TIMESTAMP()"
+  }, 
+  {"name":"processed_at","type":"TIMESTAMP","mode":"NULLABLE"},
+  {"name":"processed_by","type":"STRING","mode":"NULLABLE"}
 ]
 EOF
 }
@@ -370,6 +403,7 @@ EOF
 #   network_endpoint_type = "GCE_VM_IP_PORT"
 # }
 
+
 ########################
 # IAM BINDINGS
 ########################
@@ -432,6 +466,27 @@ resource "google_storage_bucket_iam_member" "ingestion_gcs_object_admin" {
 }
 
 
+########################
+# DOCUMENT AI PROCESSOR
+########################
+resource "google_project_service" "documentai" {
+  project = var.project_id
+  service = "documentai.googleapis.com"
+
+  disable_on_destroy = false
+}
+
+resource "google_document_ai_processor" "bills_ocr" {
+  project      = var.project_id
+  location     = var.region
+  display_name = "bills-ocr-processor"
+  type         = "OCR_PROCESSOR"
+
+  depends_on = [
+    google_project_service.documentai
+  ]
+}
+
 
 ########################
 # OUTPUTS
@@ -446,4 +501,8 @@ output "gke_cluster_name" {
 
 output "bucket_name" {
   value = google_storage_bucket.buckets.name
+}
+
+output "doc_ai_processor_id" {
+  value = google_document_ai_processor.bills_ocr.name
 }
