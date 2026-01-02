@@ -138,8 +138,8 @@ resource "google_container_cluster" "gke" {
 }
 
 resource "google_container_node_pool" "gke_pool" {
-  name       = "gke_pool"
-  location   = var.region
+  name       = "gke-pool"
+  location   = var.zone
   cluster    = google_container_cluster.gke.name
   node_count = 1
 
@@ -403,6 +403,13 @@ resource "google_project_iam_member" "postprocess_bq" {
   member = "serviceAccount:${google_service_account.postprocess.email}"
 }
 
+# access to GCP service accounts to Artifact Registry
+resource "google_project_iam_member" "gke_artifact_registry_pull" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
 # access to GCP service accounts to GCS bucket
 resource "google_storage_bucket_iam_member" "ingestion_gcs_upload" {
   bucket = "${var.project_id}-bills"
@@ -415,6 +422,13 @@ resource "google_pubsub_topic_iam_member" "ingestion_pubsub_publish" {
   topic  = google_pubsub_topic.bill_upload.name
   role   = "roles/pubsub.publisher"
   member = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
+# access to GCP service accounts to GCS bucket directly via IAM
+resource "google_storage_bucket_iam_member" "ingestion_gcs_object_admin" {
+  bucket = google_storage_bucket.buckets.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:ingestion-gsa@${var.project_id}.iam.gserviceaccount.com"
 }
 
 

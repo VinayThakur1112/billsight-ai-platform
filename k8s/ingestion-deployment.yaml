@@ -15,7 +15,7 @@ spec:
       serviceAccountName: ingestion-ksa
       containers:
       - name: ingestion
-        image: asia-south1-docker.pkg.dev/billsight-ai-platform/billsight-repo/ingestion:v2
+        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ingestion:v1
         imagePullPolicy: Always
         envFrom:
         - configMapRef:
