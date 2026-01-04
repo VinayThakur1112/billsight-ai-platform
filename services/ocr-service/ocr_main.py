@@ -4,6 +4,8 @@ import signal
 from google.cloud import pubsub_v1
 from google.cloud import storage, documentai, bigquery
 from services.common.logging import get_logger
+from dotenv import load_dotenv
+load_dotenv()
 
 logger = get_logger(__name__)
 
@@ -13,7 +15,10 @@ LOCATION = os.getenv("DOC_AI_LOCATION")
 PROCESSOR_ID = os.getenv("DOC_AI_PROCESSOR")
 BQ_DATASET = os.getenv("BQ_DATASET")
 BQ_TABLE = os.getenv("BQ_TABLE")
-SUBSCRIPTION_ID = os.getenv("SUBSCRIPTION_ID")
+SUBSCRIPTION_ID = os.getenv("PUBSUB_SUBSCRIPTION")
+
+logger.info(f"PROJECT_ID id: {PROJECT_ID}")
+    
 
 subscriber = pubsub_v1.SubscriberClient()
 subscription_path = subscriber.subscription_path(
