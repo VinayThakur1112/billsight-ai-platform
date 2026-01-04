@@ -237,6 +237,7 @@ resource "kubernetes_config_map_v1" "app_config" {
     PROJECT_ID          = "billsight-ai-project"
     BUCKET_NAME         = "billsight-ai-project-bills"
     PUBSUB_TOPIC        = "bill-upload-events"
+    PUBSUB_SUBSCRIPTION = "bill-ingestion-sub"
     PIPELINE_VERSION    = "v1"
     BQ_DATASET          = "billsight_ocr"
     BQ_TABLE            = "ocr_bills"
