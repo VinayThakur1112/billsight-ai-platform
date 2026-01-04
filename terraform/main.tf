@@ -45,7 +45,8 @@ resource "google_project_service" "required_apis" {
     "bigquery.googleapis.com",
     "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
-    "iam.googleapis.com"
+    "iam.googleapis.com",
+    "documentai.googleapis.com"
   ])
 
   service = each.value
@@ -472,14 +473,12 @@ resource "google_storage_bucket_iam_member" "ingestion_gcs_object_admin" {
 resource "google_project_service" "documentai" {
   project = var.project_id
   service = "documentai.googleapis.com"
-
-  disable_on_destroy = false
 }
 
 resource "google_document_ai_processor" "bills_ocr" {
   project      = var.project_id
-  location     = var.region
-  display_name = "bills-ocr-processor"
+  location     = "us"
+  display_name = "ocr-processor"
   type         = "OCR_PROCESSOR"
 
   depends_on = [
