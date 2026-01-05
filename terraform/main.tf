@@ -234,13 +234,13 @@ resource "kubernetes_config_map_v1" "app_config" {
 
   data = {
     LOG_LEVEL           = "INFO"
-    PROJECT_ID          = "billsight-ai-project"
-    BUCKET_NAME         = "billsight-ai-project-bills"
-    PUBSUB_TOPIC        = "bill-upload-events"
-    PUBSUB_SUBSCRIPTION = "bill-ingestion-sub"
+    PROJECT_ID          = var.project_id
+    BUCKET_NAME         = google_storage_bucket.buckets.name
+    PUBSUB_TOPIC        = google_pubsub_topic.bill_upload.name
+    PUBSUB_SUBSCRIPTION = google_pubsub_subscription.ingestion_sub.name
     PIPELINE_VERSION    = "v1"
-    BQ_DATASET          = "billsight_ocr"
-    BQ_TABLE            = "ocr_bills"
+    BQ_DATASET          = google_bigquery_dataset.ocr.dataset_id
+    BQ_TABLE            = google_bigquery_table.billing_ocr_data.table_id
     DOC_AI_PROCESSOR    = google_document_ai_processor.bills_ocr.name
   }
 }
@@ -274,7 +274,7 @@ resource "google_pubsub_topic" "dead_letter" {
 }
 
 resource "google_pubsub_subscription" "ingestion_sub" {
-  name  = "bill-ingestion-sub"
+  name  = "bill-ingestion-sub-v3"
   topic = google_pubsub_topic.bill_upload.name
 
   ack_deadline_seconds = 30

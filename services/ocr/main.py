@@ -44,7 +44,9 @@ signal.signal(signal.SIGINT, signal_handler)
 
 def callback(message: pubsub_v1.subscriber.message.Message):
     try:
+        logger.info(message.data.decode("utf-8"))
         payload = json.loads(message.data.decode("utf-8"))
+        logger.info(f"Received message: {payload}")
         process_message(payload)
         message.ack()
     except Exception as e:

@@ -17,7 +17,7 @@ from google.cloud import storage, pubsub_v1
 from datetime import datetime
 import uuid
 import os
-from common.logging import get_logger
+from services.common.logging import get_logger
 logger = get_logger(__name__)
 
 from dotenv import load_dotenv
@@ -105,7 +105,7 @@ async def upload_bill(file: UploadFile = File(...)):
             "correlation_id": str(uuid.uuid4())
         }
         publisher.publish(
-            topic_path, str(message).encode("utf-8"))
+            topic_path, json.dumps(message).encode("utf-8"))
 
         logger.info(f"Published Pub/Sub message \
                     for: {file.filename}")
