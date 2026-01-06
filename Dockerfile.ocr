@@ -1,0 +1,22 @@
+# Base image
+FROM python:3.11-slim
+
+# Set workdir
+WORKDIR /app
+
+# Copy files
+COPY requirements_ocr.txt .
+RUN pip install --no-cache-dir -r requirements_ocr.txt
+
+
+RUN mkdir -p services/ocr
+RUN mkdir -p services/common
+
+COPY services/ocr services/ocr
+COPY services/common services/common
+
+# Expose port
+EXPOSE 8000
+
+# Run FastAPI
+CMD ["python -m", "services.ocr.main"]

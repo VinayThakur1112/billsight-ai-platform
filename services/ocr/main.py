@@ -45,9 +45,9 @@ signal.signal(signal.SIGINT, signal_handler)
 def callback(message: pubsub_v1.subscriber.message.Message):
     try:
         logger.info(message.data.decode("utf-8"))
-        payload = json.loads(message.data.decode("utf-8"))
-        logger.info(f"Received message: {payload}")
-        process_message(payload)
+        # payload = json.loads(message.data.decode("utf-8"))
+        # logger.info(f"Received message: {message}")
+        process_message(message.data.decode("utf-8"))
         message.ack()
     except Exception as e:
         logger.error(f"Error processing message: {e}")
@@ -107,7 +107,9 @@ def process_message(message):
                 {payload.get('file_name')}")
 
             name = docai_client.processor_path(
-                PROJECT_ID, LOCATION, PROCESSOR_ID)
+                PROJECT_ID, 'us', PROCESSOR_ID)
+            
+            logger.info(f"Document AI processor path: {name}")
 
             request = documentai.ProcessRequest(
                 name=name,
@@ -116,6 +118,8 @@ def process_message(message):
                     mime_type="image/jpeg"
                 )
             )
+            
+            logger.info(f"Document AI request: {request}")
 
             try:
                 result = docai_client.process_document(
@@ -127,6 +131,8 @@ def process_message(message):
                     "Document AI processing failed") from e
 
             document = result.document
+
+            logger.info(f"Document AI result: {document.text}")
 
             # ---- Transform Output ----
             row = {

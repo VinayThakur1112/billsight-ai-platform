@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ingestion
+  name: ocr
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ingestion
+      app: ocr
   template:
     metadata:
       labels:
-        app: ingestion
+        app: ocr
     spec:
-      serviceAccountName: ingestion-ksa
+      serviceAccountName: ocr-ksa
       containers:
-      - name: ingestion
-        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ingestion:v4
+      - name: ocr
+        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ocr:v1
         imagePullPolicy: Always
         envFrom:
         - configMapRef:

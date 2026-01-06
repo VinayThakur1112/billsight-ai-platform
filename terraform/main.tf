@@ -242,6 +242,7 @@ resource "kubernetes_config_map_v1" "app_config" {
     BQ_DATASET          = google_bigquery_dataset.ocr.dataset_id
     BQ_TABLE            = google_bigquery_table.billing_ocr_data.table_id
     DOC_AI_PROCESSOR    = google_document_ai_processor.bills_ocr.name
+    DOC_AI_LOCATION     = google_document_ai_processor.bills_ocr.location
   }
 }
 
