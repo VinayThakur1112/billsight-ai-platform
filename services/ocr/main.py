@@ -7,7 +7,7 @@ from services.common.logging import get_logger
 from dotenv import load_dotenv
 load_dotenv()
 
-logger = get_logger(__name__)
+logger = get_logger(__spec__.name if __spec__ else __name__)
 
 PROJECT_ID = os.getenv("PROJECT_ID")
 BUCKET_NAME = os.getenv("BUCKET_NAME")

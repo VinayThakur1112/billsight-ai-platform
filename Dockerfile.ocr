@@ -19,4 +19,4 @@ COPY services/common services/common
 EXPOSE 8000
 
 # Run FastAPI
-CMD ["python -m", "services.ocr.main"]
+CMD ["python", "-m", "services.ocr.main"]

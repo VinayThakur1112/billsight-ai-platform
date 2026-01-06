@@ -2,3 +2,4 @@ google-cloud-pubsub
 google-cloud-storage
 google-cloud-documentai
 google-cloud-bigquery
+python-dotenv
