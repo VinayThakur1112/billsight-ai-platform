@@ -25,6 +25,8 @@ subscription_path = subscriber.subscription_path(
     PROJECT_ID, SUBSCRIPTION_ID
 )
 
+logger.info(f"Subscription path: {subscription_path}")
+
 storage_client = storage.Client()
 docai_client = documentai.DocumentProcessorServiceClient()
 bq_client = bigquery.Client()

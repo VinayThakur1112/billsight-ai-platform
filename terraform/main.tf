@@ -182,6 +182,15 @@ resource "google_service_account_iam_member" "ingestion_wi" {
   depends_on = [google_container_cluster.gke]
 }
 
+resource "google_service_account_iam_member" "ocr_wi" {
+  service_account_id = google_service_account.ocr.name
+  role               = "roles/iam.workloadIdentityUser"
+
+  member = "serviceAccount:${var.project_id}.svc.id.goog[default/ocr-ksa]"
+
+  depends_on = [google_container_cluster.gke]
+}
+
 
 ########################
 # Kubernetes Service Accounts
@@ -277,6 +286,7 @@ resource "google_pubsub_topic" "dead_letter" {
 resource "google_pubsub_subscription" "ingestion_sub" {
   name  = "bill-ingestion-sub-v3"
   topic = google_pubsub_topic.bill_upload.name
+  project = var.project_id
 
   ack_deadline_seconds = 30
 
@@ -422,6 +432,12 @@ resource "google_project_iam_member" "ingestion_gcs" {
   member = "serviceAccount:${google_service_account.ingestion.email}"
 }
 
+resource "google_project_iam_member" "ocr_pubsub" {
+  project = var.project_id
+  role   = "roles/pubsub.subscriber"
+  member = "serviceAccount:${google_service_account.ocr.email}"
+}
+
 resource "google_project_iam_member" "ocr_vertex" {
   project = var.project_id
   role   = "roles/aiplatform.user"
@@ -466,6 +482,13 @@ resource "google_storage_bucket_iam_member" "ingestion_gcs_object_admin" {
   bucket = google_storage_bucket.buckets.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:ingestion-gsa@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# access to GCP service accounts to Document AI API
+resource "google_project_iam_member" "document_ai_access" {
+  project = var.project_id
+  role   = "roles/documentai.apiUser"
+  member = "serviceAccount:${google_service_account.ocr.email}@${var.project_id}.iam.gserviceaccount.com"
 }
 
 
