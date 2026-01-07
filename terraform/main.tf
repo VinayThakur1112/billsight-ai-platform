@@ -488,7 +488,19 @@ resource "google_storage_bucket_iam_member" "ingestion_gcs_object_admin" {
 resource "google_project_iam_member" "document_ai_access" {
   project = var.project_id
   role   = "roles/documentai.apiUser"
-  member = "serviceAccount:${google_service_account.ocr.email}@${var.project_id}.iam.gserviceaccount.com"
+  member = "serviceAccount:${google_service_account.ocr.email}"
+}
+
+resource "google_project_iam_member" "ocr_bq_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.ocr.email}"
+}
+
+resource "google_project_iam_member" "ocr_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.ocr.email}"
 }
 
 
