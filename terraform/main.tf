@@ -491,12 +491,14 @@ resource "google_project_iam_member" "document_ai_access" {
   member = "serviceAccount:${google_service_account.ocr.email}"
 }
 
+# access to GCP service accounts to BigQuery Dataset
 resource "google_project_iam_member" "ocr_bq_editor" {
   project = var.project_id
   role    = "roles/bigquery.dataEditor"
   member  = "serviceAccount:${google_service_account.ocr.email}"
 }
 
+# access to GCP service accounts to BigQuery Dataset
 resource "google_project_iam_member" "ocr_bq_job_user" {
   project = var.project_id
   role    = "roles/bigquery.jobUser"
