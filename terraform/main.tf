@@ -94,7 +94,7 @@ provider "kubernetes" {
 
 
 ########################
-# SERVICE ACCOUNT
+# GOOGLE SERVICE ACCOUNT
 ########################
 resource "google_service_account" "ingestion" {
   account_id   = "ingestion-gsa"
@@ -107,6 +107,10 @@ resource "google_service_account" "ocr" {
 resource "google_service_account" "postprocess" {
   account_id   = "postprocess-gsa"
   display_name = "postprocess Service Account"
+}
+resource "google_service_account" "cicd" {
+  account_id   = "cicd-gsa"
+  display_name = "CI/CD Service Account"
 }
 
 ########################
@@ -503,6 +507,23 @@ resource "google_project_iam_member" "ocr_bq_job_user" {
   project = var.project_id
   role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.ocr.email}"
+}
+
+# access to CI/CD service account to Artifact Registry
+resource "google_project_iam_member" "cicd_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.cicd.email}"
+}
+resource "google_project_iam_member" "cicd_developer" {
+  project = var.project_id
+  role    = "roles/container.developer"
+  member  = "serviceAccount:${google_service_account.cicd.email}"
+}
+resource "google_project_iam_member" "cicd_cluster_viewer" {
+  project = var.project_id
+  role    = "roles/container.clusterViewer"
+  member  = "serviceAccount:${google_service_account.cicd.email}"
 }
 
 

@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - "service/ingestion/**"
-      - "service/common/**"
+      - "services/ingestion/**"
+      - "services/common/**"
       - "Dockerfile.ingestion"
       - ".github/workflows/ingestion.yml"
 
@@ -43,8 +43,9 @@ jobs:
     - name: Build API image
       run: |
         docker build \
+          -f Dockerfile.ingestion \
           -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE_NAME}:${GITHUB_SHA} \
-          ingestion/
+          .
 
     - name: Push API image
       run: |
@@ -60,3 +61,5 @@ jobs:
       run: |
         kubectl set image deployment/${DEPLOYMENT_NAME} \
           ${IMAGE_NAME}=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE_NAME}:${GITHUB_SHA}
+          -n default
+        kubectl rollout status deployment/${DEPLOYMENT_NAME}
