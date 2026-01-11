@@ -147,18 +147,50 @@ resource "google_container_cluster" "gke" {
   # }
 }
 
+## costly version
+# resource "google_container_node_pool" "gke_pool" {
+#   name       = "gke-pool"
+#   location   = var.zone
+#   cluster    = google_container_cluster.gke.name
+#   node_count = 1
+
+#   node_config {
+#     machine_type   = "e2-standard-4"
+#     oauth_scopes   = ["https://www.googleapis.com/auth/cloud-platform"]
+#     disk_type    = "pd-balanced" 
+#     disk_size_gb = 20  
+#     service_account = google_service_account.ingestion.email
+
+#     metadata = {
+#       disable-legacy-endpoints = "true"
+#     }
+#   }
+
+#   autoscaling {
+#     min_node_count = 1
+#     max_node_count = 1
+#   }
+
+#   management {
+#     auto_repair  = true
+#     auto_upgrade = true
+#   }
+# }
+# cost effective version
 resource "google_container_node_pool" "gke_pool" {
-  name       = "gke-pool"
-  location   = var.zone
-  cluster    = google_container_cluster.gke.name
+  name     = "gke-pool"
+  location = var.zone
+  cluster  = google_container_cluster.gke.name
+
   node_count = 1
 
   node_config {
-    machine_type   = "e2-standard-4"
-    oauth_scopes   = ["https://www.googleapis.com/auth/cloud-platform"]
-    disk_type    = "pd-balanced" 
-    disk_size_gb = 20  
+    machine_type = "e2-small"   # ✅ BIG SAVING
+    disk_type    = "pd-standard"
+    disk_size_gb = 10
+
     service_account = google_service_account.ingestion.email
+    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
 
     metadata = {
       disable-legacy-endpoints = "true"
@@ -168,11 +200,6 @@ resource "google_container_node_pool" "gke_pool" {
   autoscaling {
     min_node_count = 1
     max_node_count = 1
-  }
-
-  management {
-    auto_repair  = true
-    auto_upgrade = true
   }
 }
 
@@ -308,6 +335,7 @@ resource "google_bigquery_dataset" "ocr" {
   dataset_id = "billsight_ocr"
   location   = var.region
 }
+
 
 resource "google_bigquery_table" "ocr_table" {
   dataset_id = google_bigquery_dataset.ocr.dataset_id
@@ -546,6 +574,43 @@ resource "google_document_ai_processor" "bills_ocr" {
   ]
 }
 
+########################
+# CICD setup
+########################
+# resource "google_iam_workload_identity_pool" "github_pool" {
+#   provider                  = google-beta
+#   project                   = var.project_id
+#   location                  = var.region
+#   workload_identity_pool_id = "github-pool"
+#   display_name              = "GitHub Actions Pool"
+# }
+
+# resource "google_iam_workload_identity_pool_provider" "github_provider" {
+#   provider                           = google-beta
+#   project                            = var.project_id
+#   location                           = var.region
+#   workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
+#   workload_identity_pool_provider_id = "github"
+
+#   display_name = "GitHub Provider"
+#   oidc {
+#     issuer_uri = "https://token.actions.githubusercontent.com"
+#   }
+
+#   attribute_mapping = {
+#     "google.subject"       = "assertion.sub"
+#     "attribute.repository" = "assertion.repository"
+#   }
+# }
+
+# resource "google_service_account_iam_member" "github_wif_binding" {
+#   service_account_id = "projects/${var.project_id}/serviceAccounts/cicd-gsa@${var.project_id}.iam.gserviceaccount.com"
+#   role               = "roles/iam.workloadIdentityUser"
+
+#   member = "principalSet://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.github_pool.workload_identity_pool_id}/attribute.repository/${var.github_org}/${var.github_repo}"
+# }
+
+
 
 ########################
 # OUTPUTS
@@ -565,3 +630,7 @@ output "bucket_name" {
 output "doc_ai_processor_id" {
   value = google_document_ai_processor.bills_ocr.name
 }
+
+# output "workload_identity_provider" {
+#   value = "projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.github_pool.workload_identity_pool_id}/providers/${google_iam_workload_identity_pool_provider.github_provider.workload_identity_pool_provider_id}"
+# }
