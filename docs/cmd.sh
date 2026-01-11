@@ -14,6 +14,11 @@ gcloud iam workload-identity-pools providers create-oidc github \
   --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
   --attribute-condition="attribute.repository == 'VinayThakur1112/billsight-ai-platform'"
 
+gcloud iam workload-identity-pools providers update-oidc github \
+  --location=global \
+  --workload-identity-pool=github-pool \
+  --attribute-condition="attribute.repository=='VinayThakur1112/billsight-ai-platform'"
+
 # Bind GitHub Repo → GCP Service Account
 gcloud iam service-accounts add-iam-policy-binding \
   cicd-gsa@billsight-ai-project.iam.gserviceaccount.com \
