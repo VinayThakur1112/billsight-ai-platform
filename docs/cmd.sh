@@ -17,7 +17,7 @@ gcloud iam workload-identity-pools providers create-oidc github \
 gcloud iam workload-identity-pools providers update-oidc github \
   --location=global \
   --workload-identity-pool=github-pool \
-  --attribute-condition="attribute.repository=='VinayThakur1112/billsight-ai-platform'"
+  --attribute-condition="attribute.repository == 'VinayThakur1112/billsight-ai-platform'"
 
 # Bind GitHub Repo → GCP Service Account
 gcloud iam service-accounts add-iam-policy-binding \
