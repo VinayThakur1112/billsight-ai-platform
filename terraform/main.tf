@@ -553,6 +553,11 @@ resource "google_project_iam_member" "cicd_cluster_viewer" {
   role    = "roles/container.clusterViewer"
   member  = "serviceAccount:${google_service_account.cicd.email}"
 }
+resource "google_project_iam_member" "cicd_wi_user" {
+  project = var.project_id
+  role    = "roles/iam.workloadIdentityUser"
+  member  = "serviceAccount:${google_service_account.cicd.email}"
+}
 
 
 ########################
