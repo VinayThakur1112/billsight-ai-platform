@@ -15,7 +15,7 @@ spec:
       serviceAccountName: ocr-ksa
       containers:
       - name: ocr
-        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ocr:v3
+        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ocr:v4
         imagePullPolicy: Always
         envFrom:
         - configMapRef:

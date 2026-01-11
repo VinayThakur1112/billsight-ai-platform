@@ -187,7 +187,7 @@ resource "google_container_node_pool" "gke_pool" {
   node_config {
     machine_type = "e2-small"   # ✅ BIG SAVING
     disk_type    = "pd-standard"
-    disk_size_gb = 10
+    disk_size_gb = 12
 
     service_account = google_service_account.ingestion.email
     oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
