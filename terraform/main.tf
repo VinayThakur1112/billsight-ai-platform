@@ -56,18 +56,18 @@ resource "google_project_service" "required_apis" {
 ########################
 # VPC NETWORK
 ########################
-# resource "google_compute_network" "vpc" {
-#   name                    = "ocr-vpc"
-#   auto_create_subnetworks = false
-# }
+resource "google_compute_network" "vpc" {
+  name                    = "ocr-vpc"
+  auto_create_subnetworks = false
+}
 
-# resource "google_compute_subnetwork" "private" {
-#   name          = "ocr-private-subnet"
-#   ip_cidr_range = "10.0.0.0/20"
-#   region        = var.region
-#   network       = google_compute_network.vpc.id
-#   private_ip_google_access = true
-# }
+resource "google_compute_subnetwork" "private" {
+  name          = "ocr-private-subnet"
+  ip_cidr_range = "10.0.0.0/20"
+  region        = var.region
+  network       = google_compute_network.vpc.id
+  private_ip_google_access = true
+}
 
 
 ########################
@@ -417,11 +417,11 @@ EOF
 ########################
 # INTERNAL LOAD BALANCER (PRIVATE IP)
 ########################
-# resource "google_compute_address" "private_lb" {
-#   name   = "ocr-private-ip"
-#   region = var.region
-#   subnetwork = google_compute_subnetwork.private.id
-# }
+resource "google_compute_address" "private_lb" {
+  name   = "billsight-private-ip"
+  region = var.region
+  subnetwork = google_compute_subnetwork.private.id
+}
 
 # resource "google_compute_forwarding_rule" "private_api" {
 #   name        = "ocr-internal-forward"
@@ -433,17 +433,19 @@ EOF
 #   subnetwork  = google_compute_subnetwork.private.id
 # }
 
-# resource "google_compute_region_backend_service" "api" {
-#   name     = "ocr-api-backend"
-#   region   = var.region
-#   protocol = "HTTP"
-#   backend {
-#     group = google_compute_region_network_endpoint_group.gke_neg.id
-#   }
-# }
+# Backend service pointing to NEG
+resource "google_compute_region_backend_service" "api" {
+  name     = "ocr-api-backend"
+  region   = var.region
+  protocol = "HTTP"
+  backend {
+    group = google_compute_region_network_endpoint_group.gke_neg.id
+  }
+}
 
+# GKE NEG for the ingestion service
 # resource "google_compute_region_network_endpoint_group" "gke_neg" {
-#   name                  = "ocr-neg"
+#   name                  = "billsight-neg"
 #   region                = var.region
 #   network_endpoint_type = "GCE_VM_IP_PORT"
 # }
