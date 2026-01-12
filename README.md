@@ -170,6 +170,9 @@ All cloud resources are provisioned using Terraform, including:
 
 ⸻
 
+Command to push file to the k8s cluster
+curl -X POST "http://34.93.175.234:80/upload-bill" -F "file=@data/batch_1/batch_1/batch1_1/batch1-0051.jpg"
+
 👤 Author
 
 Vinay Thakur
