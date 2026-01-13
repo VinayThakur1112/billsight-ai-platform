@@ -17,7 +17,9 @@ SOURCE_TABLE = os.getenv("BQ_RAW_OCR_TABLE")
 
 
 def extract(pattern, text, group=1):
-    match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+    match = re.search(
+        pattern, text, re.IGNORECASE | re.MULTILINE
+    )
     return match.group(group).strip() if match else None
 
 
@@ -42,10 +44,11 @@ def normalize_amount(value: str) -> float:
 
 def run_transformer():
     rows = list(fetch_raw_ocr_rows())
-    logger.info(f"Fetched {len(rows)} rows")
+    # logger.info(f"Fetched {len(rows)} rows")
+    
 
     for row in rows:
-        print(row)
+        print(repr(row.text))
 
         data = {}
 
@@ -58,7 +61,7 @@ def run_transformer():
         )
 
         seller_block = extract(
-            r"Seller:\s*(.*?)\n\s*Client:",
+            r"Seller:\n(.*?)(?=\nClient:)",
             row.text,
             group=1
         )
@@ -101,3 +104,18 @@ def run_transformer():
 
 if __name__ == "__main__":
     run_transformer()
+    # text = """Seller:
+    # Nicholson, Miller and Webster
+    # USS Lee
+    # FPO AE 74393
+    # Tax Id: 962-88-9077
+    # IBAN: GB23TMKM50357047352524
+    # Client:"""
+
+    # match = re.search(
+    #     r"Seller:\s*(.*?)\s*Client:",
+    #     text,
+    #     re.DOTALL
+    # )
+
+    # print(match.group(1))
