@@ -283,6 +283,9 @@ resource "kubernetes_config_map_v1" "app_config" {
     BQ_TABLE            = google_bigquery_table.billing_ocr_data.table_id
     DOC_AI_PROCESSOR    = google_document_ai_processor.bills_ocr.name
     DOC_AI_LOCATION     = google_document_ai_processor.bills_ocr.location
+    BILL_SIGHT_RAW_TABLE = google_bigquery_table.billing_ocr_data.table_id
+    BILL_SIGHT_SUMMARY_TABLE = google_bigquery_table.billsight_invoice_summary.table_id
+    BILL_SIGHT_ITEMS_TABLE = google_bigquery_table.billsight_invoice_items_list.table_id
   }
 }
 
