@@ -372,6 +372,64 @@ resource "google_bigquery_table" "billing_ocr_data" {
 EOF
 }
 
+resource "google_bigquery_table" "billsight_invoice_summary" {
+  dataset_id = google_bigquery_dataset.ocr.dataset_id
+  table_id   = "billsight_invoice_summary"
+  deletion_protection = false
+  schema     = <<EOF
+[
+  {"name":"correlation_id","type":"STRING","mode":"REQUIRED"},
+  {"name":"file_name","type":"STRING","mode":"NULLABLE"},
+  {"name":"invoice_number","type":"STRING","mode":"NULLABLE"},
+  {"name":"Date_of_issue","type":"STRING","mode":"NULLABLE"},
+  {"name":"seller_name","type":"STRING","mode":"NULLABLE"},
+  {"name":"seller_address","type":"STRING","mode":"NULLABLE"},
+  {"name":"seller_tax_id","type":"STRING","mode":"NULLABLE"},
+  {"name":"client_name","type":"STRING","mode":"NULLABLE"},
+  {"name":"client_address","type":"STRING","mode":"NULLABLE"},
+  {"name":"client_tax_id","type":"STRING","mode":"NULLABLE"},
+  {"name":"total_net","type":"STRING","mode":"NULLABLE"},
+  {"name":"total_vat","type":"STRING","mode":"NULLABLE"},
+  {"name":"total_gross","type":"STRING","mode":"NULLABLE"},
+  {
+    "name":"logtime",
+    "type":"TIMESTAMP",
+    "mode":"NULLABLE", 
+    "defaultValueExpression":"CURRENT_TIMESTAMP()"
+  }, 
+  {"name":"processed_at","type":"TIMESTAMP","mode":"NULLABLE"},
+  {"name":"processed_by","type":"STRING","mode":"NULLABLE"}
+]
+EOF
+}
+
+resource "google_bigquery_table" "billsight_invoice_items_list" {
+  dataset_id = google_bigquery_dataset.ocr.dataset_id
+  table_id   = "billsight_invoice_items_list"
+  deletion_protection = false
+  schema     = <<EOF
+[
+  {"name":"correlation_id","type":"STRING","mode":"REQUIRED"},
+  {"name":"file_name","type":"STRING","mode":"NULLABLE"},
+  {"name":"description","type":"STRING","mode":"NULLABLE"},
+  {"name":"quantity","type":"STRING","mode":"NULLABLE"},
+  {"name":"um","type":"STRING","mode":"NULLABLE"},
+  {"name":"net_price","type":"STRING","mode":"NULLABLE"},
+  {"name":"net_worth","type":"STRING","mode":"NULLABLE"},
+  {"name":"vat","type":"STRING","mode":"NULLABLE"},
+  {"name":"gross_worth","type":"STRING","mode":"NULLABLE"},
+  {
+    "name":"logtime",
+    "type":"TIMESTAMP",
+    "mode":"NULLABLE", 
+    "defaultValueExpression":"CURRENT_TIMESTAMP()"
+  }, 
+  {"name":"processed_at","type":"TIMESTAMP","mode":"NULLABLE"},
+  {"name":"processed_by","type":"STRING","mode":"NULLABLE"}
+]
+EOF
+}
+
 
 ########################
 # IAM BINDINGS
