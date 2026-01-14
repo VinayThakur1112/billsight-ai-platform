@@ -43,19 +43,28 @@ def normalize_amount(value: str) -> float:
         value.replace(" ", "").replace(",", ".")
     )
 
-def bigquery_insert(data: str, table_id: str):
+def bigquery_insert(data: list, table_id: str):
     client = bigquery.Client()
     
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ArrayQueryParameter(
                 "rows",
-                "STRUCT<correlation_id STRING, invoice_number STRING, " \
-                "date_of_issue STRING, seller_name, STRING>, " \
-                "seller_address STRING, seller_tax_id STRING, " \
-                "client_name STRING, client_address STRING, " \
-                "client_tax_id STRING, total_net STRING, " \
-                "total_vat STRING, total_gross STRING",
+                "STRUCT<" \
+                "correlation_id STRING, " \
+                "file_name STRING, " \
+                "invoice_number STRING, " \
+                "date_of_issue STRING, " \
+                "seller_name STRING, " \
+                "seller_address STRING, " \
+                "seller_tax_id STRING, " \
+                "client_name STRING, " \
+                "client_address STRING, " \
+                "client_tax_id STRING, " \
+                "total_net STRING, " \
+                "total_vat STRING, " \
+                "total_gross STRING"
+                ">",
                 data
             )
         ]
@@ -76,7 +85,8 @@ def bigquery_insert(data: str, table_id: str):
     S.client_tax_id, S.total_net, S.total_vat, S.total_gross)
     """
 
-    client.query(query, job_config=job_config).result()
+    response_val = client.query(query, job_config=job_config).result()
+    logger.info(f"insertion response: {response_val}")
 
 
 
@@ -130,7 +140,7 @@ def run_transformer():
             group=1
         )
         client_block = client_block.replace("\\n", " ").replace("\n", " ")
-        logger.info(f'client_block: {client_block}')
+        # logger.info(f'client_block: {client_block}')
 
         if client_block:
             
@@ -150,11 +160,12 @@ def run_transformer():
         totals = re.findall(r"\$\s*([\d\s.,]+)", row.text)
 
         if len(totals) >= 3:
-            data["total_net"] = normalize_amount(totals[-3])
-            data["total_vat"] = normalize_amount(totals[-2])
-            data["total_gross"] = normalize_amount(totals[-1])
+            data["total_net"] = str(normalize_amount(totals[-3]))
+            data["total_vat"] = str(normalize_amount(totals[-2]))
+            data["total_gross"] = str(normalize_amount(totals[-1]))
 
-        logger.info(f"Extracted Data: {data}")
+        # logger.info(f"Extracted Data: {data}")
+
 
         table_row = {
             "correlation_id": row.correlation_id,
@@ -173,6 +184,8 @@ def run_transformer():
         }
 
         rows_to_insert.append(table_row)
+    
+    logger.info(rows_to_insert)
 
     # insert into table
     bigquery_insert(rows_to_insert, f"{PROJECT_ID}.{DATASET}.{SUMMARY_TABLE}")
