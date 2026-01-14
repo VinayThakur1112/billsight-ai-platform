@@ -13,7 +13,9 @@ load_dotenv()
 
 PROJECT_ID = os.getenv("PROJECT_ID")
 DATASET = os.getenv("BQ_DATASET")
-SOURCE_TABLE = os.getenv("BQ_RAW_OCR_TABLE")
+SOURCE_TABLE = os.getenv("BILL_SIGHT_RAW_TABLE")
+SUMMARY_TABLE = os.getenv("BILL_SIGHT_SUMMARY_TABLE")
+ITEMS_TABLE = os.getenv("BILL_SIGHT_ITEMS_TABLE")
 
 
 def extract(pattern, text, group=1):
@@ -41,14 +43,50 @@ def normalize_amount(value: str) -> float:
         value.replace(" ", "").replace(",", ".")
     )
 
+def bigquery_insert(data: str, table_id: str):
+    client = bigquery.Client()
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ArrayQueryParameter(
+                "rows",
+                "STRUCT<correlation_id STRING, invoice_number STRING, " \
+                "date_of_issue STRING, seller_name, STRING>, " \
+                "seller_address STRING, seller_tax_id STRING, " \
+                "client_name STRING, client_address STRING, " \
+                "client_tax_id STRING, total_net STRING, " \
+                "total_vat STRING, total_gross STRING",
+                data
+            )
+        ]
+    )
+
+    query = f"""
+    MERGE `{table_id}` T
+    USING (
+    SELECT * FROM UNNEST(@rows)
+    ) S
+    ON T.correlation_id = S.correlation_id
+    WHEN NOT MATCHED THEN
+    INSERT (correlation_id, invoice_number, date_of_issue, seller_name,
+    seller_address, seller_tax_id, client_name, client_address, client_tax_id
+    total_net, total_vat, total_gross)
+    VALUES (S.correlation_id, S.invoice_number, S.date_of_issue, S.seller_name,
+    S.seller_address, S.seller_tax_id, S.client_name, S.client_address, 
+    S.client_tax_id, S.total_net, S.total_vat, S.total_gross)
+    """
+
+    client.query(query, job_config=job_config).result()
+
+
 
 def run_transformer():
     rows = list(fetch_raw_ocr_rows())
     # logger.info(f"Fetched {len(rows)} rows")
-    
 
+    rows_to_insert = []
     for row in rows:
-        print(repr(row.text))
+        print(repr(row))
 
         data = {}
 
@@ -61,36 +99,52 @@ def run_transformer():
         )
 
         seller_block = extract(
-            r"Seller:\n(.*?)(?=\nClient:)",
-            row.text,
+            r"Seller:(.*?)(?=Client:)",
+            repr(row.text),
             group=1
         )
-        logger.info(f'seller_block: {seller_block}')
+        seller_block = seller_block.replace("\\n", " ").replace("\n", " ")
+        # logger.info(f'seller_block: {seller_block}')
 
         if seller_block:
-            lines = [
-                l.strip() for l in seller_block.splitlines() if l.strip()
-            ]
-            data["seller_name"] = lines[0]
-            data["seller_address"] = " ".join(lines[1:-1])
+            
+            data["seller_name"] = extract(
+                r"(.*?)(?=Tax Id:)",
+                seller_block,
+                group=1
+            )
+            data["seller_address"] = extract(
+                r"(.*?)(?=Tax Id:)",
+                seller_block,
+                group=1
+            )
             data["seller_tax_id"] = extract(
-                r"Tax Id[:\s]+([\d-]+)", seller_block
+                r"Tax Id:(.*?)(?=IBAN:)",
+                seller_block,
+                group=1
             )
         
         client_block = extract(
-            r"Client:\s*(.*?)\n\s*ITEMS",
-            row.text,
+            r"Client:(.*?)(?=ITEMS)",
+            repr(row.text),
             group=1
         )
+        client_block = client_block.replace("\\n", " ").replace("\n", " ")
+        logger.info(f'client_block: {client_block}')
 
         if client_block:
-            lines = [
-                l.strip() for l in client_block.splitlines() if l.strip()
-            ]
-            data["client_name"] = lines[0]
-            data["client_address"] = " ".join(lines[1:-1])
+            
+            data["client_name"] = extract(
+                r"(.*?)(?=Tax Id:)",
+                client_block,
+            )
+            data["client_address"] = extract(
+                r"(.*?)(?=Tax Id:)",
+                client_block,
+            )
             data["client_tax_id"] = extract(
-                r"Tax Id[:\s]+([\d-]+)", client_block
+                r"Tax Id:(.*)", 
+                client_block
             )
 
         totals = re.findall(r"\$\s*([\d\s.,]+)", row.text)
@@ -102,20 +156,26 @@ def run_transformer():
 
         logger.info(f"Extracted Data: {data}")
 
+        table_row = {
+            "correlation_id": row.correlation_id,
+            "file_name": row.file_name,
+            "invoice_number": data["invoice_number"],
+            "date_of_issue": data["date_of_issue"],
+            "seller_name": data["seller_name"],
+            "seller_address": data["seller_address"],
+            "seller_tax_id": data["seller_tax_id"],
+            "client_name": data["client_name"],
+            "client_address": data["client_address"],
+            "client_tax_id": data["client_tax_id"],
+            "total_net": data["total_net"],
+            "total_vat": data["total_vat"],
+            "total_gross": data["total_gross"],
+        }
+
+        rows_to_insert.append(table_row)
+
+    # insert into table
+    bigquery_insert(rows_to_insert, f"{PROJECT_ID}.{DATASET}.{SUMMARY_TABLE}")
+
 if __name__ == "__main__":
     run_transformer()
-    # text = """Seller:
-    # Nicholson, Miller and Webster
-    # USS Lee
-    # FPO AE 74393
-    # Tax Id: 962-88-9077
-    # IBAN: GB23TMKM50357047352524
-    # Client:"""
-
-    # match = re.search(
-    #     r"Seller:\s*(.*?)\s*Client:",
-    #     text,
-    #     re.DOTALL
-    # )
-
-    # print(match.group(1))
