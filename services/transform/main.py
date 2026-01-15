@@ -25,7 +25,7 @@ def extract(pattern, text, group=1):
     return match.group(group).strip() if match else None
 
 
-def fetch_raw_ocr_rows(limit=1):
+def fetch_raw_ocr_rows(limit=10):
     query = f"""
     SELECT
       correlation_id,
@@ -53,46 +53,74 @@ def bigquery_insert(data, table_id: str):
             bigquery.StructQueryParameter(
                 "row_placeholder", 
                 bigquery.ScalarQueryParameter(
-                    "correlation_id", "STRING", row["correlation_id"]),
+                    "correlation_id", 
+                    "STRING", 
+                    row["correlation_id"]),
                 bigquery.ScalarQueryParameter(
-                    "file_name", "STRING", row["file_name"]),
+                    "file_name", 
+                    "STRING", 
+                    row["file_name"]),
                 bigquery.ScalarQueryParameter(
-                    "invoice_number", "STRING", row["invoice_number"]),
+                    "invoice_number", 
+                    "STRING", 
+                    row["invoice_number"]),
                 bigquery.ScalarQueryParameter(
-                    "Date_of_issue", "STRING", row["Date_of_issue"]),
+                    "Date_of_issue", 
+                    "STRING", 
+                    row["Date_of_issue"]),
                 bigquery.ScalarQueryParameter(
-                    "seller_name", "STRING", row["seller_name"]),
+                    "seller_name", 
+                    "STRING", 
+                    row["seller_name"]),
                 bigquery.ScalarQueryParameter(
-                    "seller_address", "STRING", row["seller_address"]),
+                    "seller_address", 
+                    "STRING", 
+                    row["seller_address"]),
                 bigquery.ScalarQueryParameter(
-                    "seller_tax_id", "STRING", row["seller_tax_id"]),
+                    "seller_tax_id", 
+                    "STRING", 
+                    row["seller_tax_id"]),
                 bigquery.ScalarQueryParameter(
-                    "client_name", "STRING", row["client_name"]),
+                    "client_name", 
+                    "STRING", 
+                    row["client_name"]),
                 bigquery.ScalarQueryParameter(
-                    "client_address", "STRING", row["client_address"]),
+                    "client_address", 
+                    "STRING", 
+                    row["client_address"]),
                 bigquery.ScalarQueryParameter(
-                    "client_tax_id", "STRING", row["client_tax_id"]),
+                    "client_tax_id", 
+                    "STRING", 
+                    row["client_tax_id"]),
                 bigquery.ScalarQueryParameter(
-                    "total_net", "STRING", row["total_net"]),
+                    "total_net", 
+                    "STRING", 
+                    row["total_net"]),
                 bigquery.ScalarQueryParameter(
-                    "total_vat", "STRING", row["total_vat"]),
+                    "total_vat", 
+                    "STRING", 
+                    row["total_vat"]),
                 bigquery.ScalarQueryParameter(
-                    "total_gross", "STRING", row["total_gross"])
+                    "total_gross", 
+                    "STRING", 
+                    row["total_gross"])
             )
         )
     
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ArrayQueryParameter("rows", "RECORD", struct_data)
+            bigquery.ArrayQueryParameter(
+                "rows", "RECORD", struct_data)
         ]
     )
 
     query = f"""
         MERGE `{table_id}` T
         USING (
-        SELECT correlation_id, file_name, invoice_number, Date_of_issue,
-        seller_name, seller_address, seller_tax_id, client_name,
-        client_address, client_tax_id, total_net, total_vat, 
+        SELECT correlation_id, file_name, invoice_number, 
+        Date_of_issue, seller_name, seller_address, 
+        seller_tax_id, client_name, client_address, 
+        client_tax_id, total_net, total_vat, 
         total_gross FROM UNNEST(@rows)
         ) S
         ON T.correlation_id = S.correlation_id
@@ -129,7 +157,9 @@ def bigquery_insert(data, table_id: str):
         )
     """
 
-    response_val = client.query(query, job_config=job_config).result()
+    response_val = client.query(
+        query, job_config=job_config
+    ).result()
     logger.info(f"insertion response: {response_val}")
 
 
@@ -171,7 +201,8 @@ def run_transformer():
             group=1
         )
         if seller_block:
-            seller_block = seller_block.replace("\\n", " ").replace("\n", " ")
+            seller_block = seller_block.replace(
+                "\\n", " ").replace("\n", " ")
             # logger.info(f'seller_block: {seller_block}')
             
             data["seller_name"] = extract(
@@ -196,7 +227,8 @@ def run_transformer():
             group=1
         )
         if client_block:
-            client_block = client_block.replace("\\n", " ").replace("\n", " ")
+            client_block = client_block.replace(
+                "\\n", " ").replace("\n", " ")
             # logger.info(f'client_block: {client_block}')
             
             data["client_name"] = extract(
@@ -215,9 +247,15 @@ def run_transformer():
         totals = re.findall(r"\$\s*([\d\s.,]+)", row.text)
 
         if len(totals) >= 3:
-            data["total_net"] = str(normalize_amount(totals[-3]))
-            data["total_vat"] = str(normalize_amount(totals[-2]))
-            data["total_gross"] = str(normalize_amount(totals[-1]))
+            data["total_net"] = str(
+                normalize_amount(totals[-3])
+            )
+            data["total_vat"] = str(
+                normalize_amount(totals[-2])
+            )
+            data["total_gross"] = str(
+                normalize_amount(totals[-1])
+            )
 
         # logger.info(f"Extracted Data: {data}")
 
@@ -246,7 +284,10 @@ def run_transformer():
     logger.info(rows_to_insert)
 
     # insert into table
-    bigquery_insert(rows_to_insert, f"{PROJECT_ID}.{DATASET}.{SUMMARY_TABLE}")
+    bigquery_insert(
+        rows_to_insert, 
+        f"{PROJECT_ID}.{DATASET}.{SUMMARY_TABLE}"
+    )
 
 if __name__ == "__main__":
     run_transformer()
