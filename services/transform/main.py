@@ -43,8 +43,27 @@ def normalize_amount(value: str) -> float:
         value.replace(" ", "").replace(",", ".")
     )
 
-def bigquery_insert(data: list, table_id: str):
+def bigquery_insert(data, table_id: str):
     client = bigquery.Client()
+
+#     rows_param = [
+#     (
+#         r["correlation_id"],
+#         r["file_name"],
+#         r["invoice_number"],
+#         r["Date_of_issue"],
+#         r["seller_name"],
+#         r["seller_address"],
+#         r["seller_tax_id"],
+#         r["client_name"],
+#         r["client_address"],
+#         r["client_tax_id"],
+#         r["total_net"],
+#         r["total_vat"],
+#         r["total_gross"],
+#     )
+#     for r in data
+# ]
     
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -54,7 +73,7 @@ def bigquery_insert(data: list, table_id: str):
                 "correlation_id STRING, " \
                 "file_name STRING, " \
                 "invoice_number STRING, " \
-                "date_of_issue STRING, " \
+                "Date_of_issue STRING, " \
                 "seller_name STRING, " \
                 "seller_address STRING, " \
                 "seller_tax_id STRING, " \
@@ -63,26 +82,82 @@ def bigquery_insert(data: list, table_id: str):
                 "client_tax_id STRING, " \
                 "total_net STRING, " \
                 "total_vat STRING, " \
-                "total_gross STRING"
+                "total_gross STRING" \
                 ">",
                 data
             )
         ]
     )
 
+    # query = f"""
+    # MERGE `{table_id}` T
+    # USING (
+    # SELECT * FROM UNNEST(@rows)
+    # ) S
+    # ON T.correlation_id = S.correlation_id
+    # WHEN NOT MATCHED THEN
+    # INSERT (
+    #     correlation_id, 
+    #     file_name,
+    #     invoice_number, 
+    #     Date_of_issue, 
+    #     seller_name,
+    #     seller_address, 
+    #     seller_tax_id, 
+    #     client_name, 
+    #     client_address, 
+    #     client_tax_id,
+    #     total_net, 
+    #     total_vat, 
+    #     total_gross
+    # )
+    # VALUES (
+    #     S.correlation_id, 
+    #     S.file_name,
+    #     S.invoice_number, 
+    #     S.Date_of_issue, 
+    #     S.seller_name,
+    #     S.seller_address, 
+    #     S.seller_tax_id, 
+    #     S.client_name, 
+    #     S.client_address, 
+    #     S.client_tax_id, 
+    #     S.total_net, 
+    #     S.total_vat, 
+    #     S.total_gross
+    # )
+    # """
     query = f"""
-    MERGE `{table_id}` T
-    USING (
-    SELECT * FROM UNNEST(@rows)
-    ) S
-    ON T.correlation_id = S.correlation_id
-    WHEN NOT MATCHED THEN
-    INSERT (correlation_id, invoice_number, date_of_issue, seller_name,
-    seller_address, seller_tax_id, client_name, client_address, client_tax_id
-    total_net, total_vat, total_gross)
-    VALUES (S.correlation_id, S.invoice_number, S.date_of_issue, S.seller_name,
-    S.seller_address, S.seller_tax_id, S.client_name, S.client_address, 
-    S.client_tax_id, S.total_net, S.total_vat, S.total_gross)
+    INSERT INTO `{table_id}` (
+    correlation_id,
+    file_name,
+    invoice_number,
+    Date_of_issue,
+    seller_name,
+    seller_address,
+    seller_tax_id,
+    client_name,
+    client_address,
+    client_tax_id,
+    total_net,
+    total_vat,
+    total_gross
+    )
+    SELECT
+    correlation_id,
+    file_name,
+    invoice_number,
+    Date_of_issue,
+    seller_name,
+    seller_address,
+    seller_tax_id,
+    client_name,
+    client_address,
+    client_tax_id,
+    total_net,
+    total_vat,
+    total_gross
+    FROM UNNEST(@rows)
     """
 
     response_val = client.query(query, job_config=job_config).result()
@@ -98,13 +173,26 @@ def run_transformer():
     for row in rows:
         print(repr(row))
 
-        data = {}
+        # Initialize data with None to avoid KeyError
+        data = {
+            "invoice_number": None,
+            "Date_of_issue": None,
+            "seller_name": None,
+            "seller_address": None,
+            "seller_tax_id": None,
+            "client_name": None,
+            "client_address": None,
+            "client_tax_id": None,
+            "total_net": None,
+            "total_vat": None,
+            "total_gross": None,
+        }
 
         data["invoice_number"] = extract(
             r"Invoice\s*no[:\s]+(\d+)", row.text
         )
 
-        data["date_of_issue"] = extract(
+        data["Date_of_issue"] = extract(
             r"Date of issue[:\s]*\n?([0-9/.-]+)", row.text
         )
 
@@ -113,10 +201,9 @@ def run_transformer():
             repr(row.text),
             group=1
         )
-        seller_block = seller_block.replace("\\n", " ").replace("\n", " ")
-        # logger.info(f'seller_block: {seller_block}')
-
         if seller_block:
+            seller_block = seller_block.replace("\\n", " ").replace("\n", " ")
+            # logger.info(f'seller_block: {seller_block}')
             
             data["seller_name"] = extract(
                 r"(.*?)(?=Tax Id:)",
@@ -139,10 +226,9 @@ def run_transformer():
             repr(row.text),
             group=1
         )
-        client_block = client_block.replace("\\n", " ").replace("\n", " ")
-        # logger.info(f'client_block: {client_block}')
-
         if client_block:
+            client_block = client_block.replace("\\n", " ").replace("\n", " ")
+            # logger.info(f'client_block: {client_block}')
             
             data["client_name"] = extract(
                 r"(.*?)(?=Tax Id:)",
@@ -166,21 +252,24 @@ def run_transformer():
 
         # logger.info(f"Extracted Data: {data}")
 
+        # Helper to ensure string or None
+        def to_str(val):
+            return str(val) if val is not None else None
 
         table_row = {
-            "correlation_id": row.correlation_id,
-            "file_name": row.file_name,
-            "invoice_number": data["invoice_number"],
-            "date_of_issue": data["date_of_issue"],
-            "seller_name": data["seller_name"],
-            "seller_address": data["seller_address"],
-            "seller_tax_id": data["seller_tax_id"],
-            "client_name": data["client_name"],
-            "client_address": data["client_address"],
-            "client_tax_id": data["client_tax_id"],
-            "total_net": data["total_net"],
-            "total_vat": data["total_vat"],
-            "total_gross": data["total_gross"],
+            "correlation_id": to_str(row.correlation_id),
+            "file_name": to_str(row.file_name),
+            "invoice_number": to_str(data["invoice_number"]),
+            "Date_of_issue": to_str(data["Date_of_issue"]),
+            "seller_name": to_str(data["seller_name"]),
+            "seller_address": to_str(data["seller_address"]),
+            "seller_tax_id": to_str(data["seller_tax_id"]),
+            "client_name": to_str(data["client_name"]),
+            "client_address": to_str(data["client_address"]),
+            "client_tax_id": to_str(data["client_tax_id"]),
+            "total_net": to_str(data["total_net"]),
+            "total_vat": to_str(data["total_vat"]),
+            "total_gross": to_str(data["total_gross"]),
         }
 
         rows_to_insert.append(table_row)
