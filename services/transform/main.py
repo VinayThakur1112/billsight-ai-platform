@@ -45,119 +45,88 @@ def normalize_amount(value: str) -> float:
 
 def bigquery_insert(data, table_id: str):
     client = bigquery.Client()
+    # logger.info(data)
 
-#     rows_param = [
-#     (
-#         r["correlation_id"],
-#         r["file_name"],
-#         r["invoice_number"],
-#         r["Date_of_issue"],
-#         r["seller_name"],
-#         r["seller_address"],
-#         r["seller_tax_id"],
-#         r["client_name"],
-#         r["client_address"],
-#         r["client_tax_id"],
-#         r["total_net"],
-#         r["total_vat"],
-#         r["total_gross"],
-#     )
-#     for r in data
-# ]
+    struct_data = []
+    for row in data:
+        struct_data.append(
+            bigquery.StructQueryParameter(
+                "row_placeholder", 
+                bigquery.ScalarQueryParameter(
+                    "correlation_id", "STRING", row["correlation_id"]),
+                bigquery.ScalarQueryParameter(
+                    "file_name", "STRING", row["file_name"]),
+                bigquery.ScalarQueryParameter(
+                    "invoice_number", "STRING", row["invoice_number"]),
+                bigquery.ScalarQueryParameter(
+                    "Date_of_issue", "STRING", row["Date_of_issue"]),
+                bigquery.ScalarQueryParameter(
+                    "seller_name", "STRING", row["seller_name"]),
+                bigquery.ScalarQueryParameter(
+                    "seller_address", "STRING", row["seller_address"]),
+                bigquery.ScalarQueryParameter(
+                    "seller_tax_id", "STRING", row["seller_tax_id"]),
+                bigquery.ScalarQueryParameter(
+                    "client_name", "STRING", row["client_name"]),
+                bigquery.ScalarQueryParameter(
+                    "client_address", "STRING", row["client_address"]),
+                bigquery.ScalarQueryParameter(
+                    "client_tax_id", "STRING", row["client_tax_id"]),
+                bigquery.ScalarQueryParameter(
+                    "total_net", "STRING", row["total_net"]),
+                bigquery.ScalarQueryParameter(
+                    "total_vat", "STRING", row["total_vat"]),
+                bigquery.ScalarQueryParameter(
+                    "total_gross", "STRING", row["total_gross"])
+            )
+        )
     
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ArrayQueryParameter(
-                "rows",
-                "STRUCT<" \
-                "correlation_id STRING, " \
-                "file_name STRING, " \
-                "invoice_number STRING, " \
-                "Date_of_issue STRING, " \
-                "seller_name STRING, " \
-                "seller_address STRING, " \
-                "seller_tax_id STRING, " \
-                "client_name STRING, " \
-                "client_address STRING, " \
-                "client_tax_id STRING, " \
-                "total_net STRING, " \
-                "total_vat STRING, " \
-                "total_gross STRING" \
-                ">",
-                data
-            )
+            bigquery.ArrayQueryParameter("rows", "RECORD", struct_data)
         ]
     )
 
-    # query = f"""
-    # MERGE `{table_id}` T
-    # USING (
-    # SELECT * FROM UNNEST(@rows)
-    # ) S
-    # ON T.correlation_id = S.correlation_id
-    # WHEN NOT MATCHED THEN
-    # INSERT (
-    #     correlation_id, 
-    #     file_name,
-    #     invoice_number, 
-    #     Date_of_issue, 
-    #     seller_name,
-    #     seller_address, 
-    #     seller_tax_id, 
-    #     client_name, 
-    #     client_address, 
-    #     client_tax_id,
-    #     total_net, 
-    #     total_vat, 
-    #     total_gross
-    # )
-    # VALUES (
-    #     S.correlation_id, 
-    #     S.file_name,
-    #     S.invoice_number, 
-    #     S.Date_of_issue, 
-    #     S.seller_name,
-    #     S.seller_address, 
-    #     S.seller_tax_id, 
-    #     S.client_name, 
-    #     S.client_address, 
-    #     S.client_tax_id, 
-    #     S.total_net, 
-    #     S.total_vat, 
-    #     S.total_gross
-    # )
-    # """
     query = f"""
-    INSERT INTO `{table_id}` (
-    correlation_id,
-    file_name,
-    invoice_number,
-    Date_of_issue,
-    seller_name,
-    seller_address,
-    seller_tax_id,
-    client_name,
-    client_address,
-    client_tax_id,
-    total_net,
-    total_vat,
-    total_gross
-    )
-    SELECT
-    correlation_id,
-    file_name,
-    invoice_number,
-    Date_of_issue,
-    seller_name,
-    seller_address,
-    seller_tax_id,
-    client_name,
-    client_address,
-    client_tax_id,
-    total_net,
-    total_vat,
-    total_gross
-    FROM UNNEST(@rows)
+        MERGE `{table_id}` T
+        USING (
+        SELECT correlation_id, file_name, invoice_number, Date_of_issue,
+        seller_name, seller_address, seller_tax_id, client_name,
+        client_address, client_tax_id, total_net, total_vat, 
+        total_gross FROM UNNEST(@rows)
+        ) S
+        ON T.correlation_id = S.correlation_id
+        WHEN NOT MATCHED THEN
+        INSERT (
+            correlation_id, 
+            file_name,
+            invoice_number,
+            Date_of_issue,
+            seller_name,
+            seller_address,
+            seller_tax_id,
+            client_name,
+            client_address,
+            client_tax_id,
+            total_net,
+            total_vat,
+            total_gross
+        )
+        VALUES (
+            S.correlation_id, 
+            S.file_name,
+            S.invoice_number,
+            S.Date_of_issue,
+            S.seller_name,
+            S.seller_address,
+            S.seller_tax_id,
+            S.client_name,
+            S.client_address,
+            S.client_tax_id,
+            S.total_net,
+            S.total_vat,
+            S.total_gross
+        )
     """
 
     response_val = client.query(query, job_config=job_config).result()

@@ -406,6 +406,18 @@ resource "google_bigquery_table" "billsight_invoice_summary" {
 EOF
 }
 
+resource "google_bigquery_table" "billsight_invoice_summary_test" {
+  dataset_id = google_bigquery_dataset.ocr.dataset_id
+  table_id   = "billsight_invoice_summary_test"
+  deletion_protection = false
+  schema     = <<EOF
+[
+  {"name":"correlation_id","type":"STRING","mode":"REQUIRED"}
+]
+EOF
+}
+
+
 resource "google_bigquery_table" "billsight_invoice_items_list" {
   dataset_id = google_bigquery_dataset.ocr.dataset_id
   table_id   = "billsight_invoice_items_list"
