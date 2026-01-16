@@ -1,0 +1,22 @@
+# Base image
+FROM python:3.11-slim
+
+# Set workdir
+WORKDIR /app
+
+# Copy files
+COPY requirements_transform.txt .
+RUN pip install --no-cache-dir -r requirements_transform.txt
+
+
+RUN mkdir -p services/transform
+RUN mkdir -p services/common
+
+COPY services/transform services/transform
+COPY services/common services/common
+
+# Expose port
+EXPOSE 8000
+
+# Run FastAPI
+CMD ["python", "-m", "services.transform.main"]

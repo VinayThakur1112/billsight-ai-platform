@@ -18,7 +18,7 @@ spec:
 
           containers:
           - name: postprocess-ksa
-            image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/transform:v1
+            image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/transform:v2
             command: ["python", "-m", "services.transform.main"]
 
             envFrom:
