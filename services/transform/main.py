@@ -6,7 +6,7 @@ from services.common.logging import get_logger
 from google.cloud import bigquery
 client = bigquery.Client()
 
-logger = get_logger(__name__)
+logger = get_logger(__spec__.name if __spec__ else __name__)
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -28,20 +28,22 @@ def extract(pattern, text, group=1):
 def fetch_raw_ocr_rows(limit=10):
     query = f"""
     SELECT
-      correlation_id,
-      file_name,
-      text
-    FROM `{PROJECT_ID}.{DATASET}.{SOURCE_TABLE}`
-    WHERE text IS NOT NULL
-    AND PROCESSED_BY IS NULL
+      A.correlation_id,
+      A.file_name,
+      A.text
+    FROM `{PROJECT_ID}.{DATASET}.{SOURCE_TABLE}` A
+    LEFT JOIN `{PROJECT_ID}.{DATASET}.{SUMMARY_TABLE}` B
+    ON A.correlation_id = B.correlation_id
+    WHERE A.text IS NOT NULL
+    AND A.PROCESSED_BY IS NULL
+    AND B.correlation_id IS NULL
     LIMIT {limit}
     """
     return client.query(query).result()
 
 def normalize_amount(value: str) -> float:
-    return float(
-        value.replace(" ", "").replace(",", ".")
-    )
+    value = value.replace('\n', '')
+    return value.replace(" ", "").replace(",", ".")
 
 def bigquery_insert(data, table_id: str):
     client = bigquery.Client()
@@ -247,15 +249,21 @@ def run_transformer():
         totals = re.findall(r"\$\s*([\d\s.,]+)", row.text)
 
         if len(totals) >= 3:
-            data["total_net"] = str(
+            # data["total_net"] = str(
+            #     normalize_amount(totals[-3])
+            # )
+            # data["total_vat"] = str(
+            #     normalize_amount(totals[-2])
+            # )
+            # data["total_gross"] = str(
+            #     normalize_amount(totals[-1])
+            # )
+            data["total_net"] = \
                 normalize_amount(totals[-3])
-            )
-            data["total_vat"] = str(
+            data["total_vat"] = \
                 normalize_amount(totals[-2])
-            )
-            data["total_gross"] = str(
+            data["total_gross"] = \
                 normalize_amount(totals[-1])
-            )
 
         # logger.info(f"Extracted Data: {data}")
 
@@ -284,10 +292,15 @@ def run_transformer():
     logger.info(rows_to_insert)
 
     # insert into table
-    bigquery_insert(
-        rows_to_insert, 
-        f"{PROJECT_ID}.{DATASET}.{SUMMARY_TABLE}"
-    )
+    if rows_to_insert:
+        logger.info("Processing new records.")
+        bigquery_insert(
+            rows_to_insert, 
+            f"{PROJECT_ID}.{DATASET}.{SUMMARY_TABLE}"
+        )
+    else:
+        logger.info(
+            "No new records found. Nothing to process.")
 
 if __name__ == "__main__":
     run_transformer()

@@ -222,6 +222,15 @@ resource "google_service_account_iam_member" "ocr_wi" {
   depends_on = [google_container_cluster.gke]
 }
 
+resource "google_service_account_iam_member" "postprocess_wi" {
+  service_account_id = google_service_account.postprocess.name
+  role               = "roles/iam.workloadIdentityUser"
+
+  member = "serviceAccount:${var.project_id}.svc.id.goog[default/postprocess-ksa]"
+
+  depends_on = [google_container_cluster.gke]
+}
+
 
 ########################
 # Kubernetes Service Accounts
