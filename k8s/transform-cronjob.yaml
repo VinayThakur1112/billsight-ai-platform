@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: transform-batch-processor
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: postprocess-ksa
+          restartPolicy: Never
+
+          containers:
+          - name: postprocess-ksa
+            image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/transform:v1
+            command: ["python", "-m", "services.transform.main"]
+
+            envFrom:
+            - configMapRef:
+                name: app-config-v1
