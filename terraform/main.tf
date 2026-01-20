@@ -543,6 +543,18 @@ resource "google_project_iam_member" "ocr_bq_job_user" {
   member  = "serviceAccount:${google_service_account.ocr.email}"
 }
 
+# access to GCP service accounts to BigQuery Dataset
+resource "google_project_iam_member" "postprocess_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.postprocess.email}"
+}
+resource "google_project_iam_member" "postprocess_bq_job_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.postprocess.email}"
+}
+
 # access to CI/CD service account to Artifact Registry
 resource "google_project_iam_member" "cicd_writer" {
   project = var.project_id
