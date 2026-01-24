@@ -1,22 +1,37 @@
-# Base image
+# -------- Build Stage --------
+FROM python:3.11-slim AS builder
+
+# Set workdir
+WORKDIR /app
+
+RUN mkdir -p services/ingestion services/common
+
+COPY services/ingestion services/ingestion
+COPY services/common services/common
+
+# Install build dependencies only if needed
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements_ingestion.txt .
+
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements_ingestion.txt --target /install
+
+# -------- Runtime Stage --------
 FROM python:3.11-slim
 
 # Set workdir
 WORKDIR /app
 
-# Copy files
-COPY requirements_ingestion.txt .
-RUN pip install --no-cache-dir -r requirements_ingestion.txt
+# Copy only installed dependencies
+COPY --from=builder /install /usr/local/lib/python3.11/site-packages
 
-
-RUN mkdir -p services/ingestion
-RUN mkdir -p services/common
-
-COPY services/ingestion services/ingestion
-COPY services/common services/common
+COPY --from=builder /app/services /app/services
 
 # Expose port
 EXPOSE 8000
 
 # Run FastAPI
-CMD ["uvicorn", "services.ingestion.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "services.ingestion.main:app", "--host", "0.0.0.0", "--port", "8000"]

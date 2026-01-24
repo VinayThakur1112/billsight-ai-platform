@@ -11,12 +11,26 @@ spec:
     metadata:
       labels:
         app: ingestion
+    
     spec:
+      # Set security context to run as non-root user
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
       serviceAccountName: ingestion-ksa
       containers:
       - name: ingestion
-        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ingestion:v6
+        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ingestion:v16
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "96Mi"
+          limits:
+            cpu: "50m"
+            memory: "256Mi"
         imagePullPolicy: Always
         envFrom:
         - configMapRef:
             name: app-config-v1
+    

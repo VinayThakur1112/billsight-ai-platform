@@ -1,2 +1,4 @@
 google-cloud-bigquery
 python-dotenv
+jaraco-context>=5.3.0
+tenacity

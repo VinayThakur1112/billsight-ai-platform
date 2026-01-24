@@ -2,11 +2,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = ">= 5.25.0"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "~> 5.0"
+      version = ">= 5.25.0"
     }
   }
 }
@@ -80,6 +80,15 @@ resource "google_artifact_registry_repository" "billsight_repo" {
   description   = "Docker repository for billsight project"
   format        = "DOCKER"
   project       = var.project_id
+
+  docker_config {
+    immutable_tags = false
+  }
+
+  # vulnerability scanning enabled for security
+  vulnerability_scanning_config {
+    enable = true
+  }
 }
 
 data "google_client_config" "default" {}
@@ -128,6 +137,18 @@ resource "google_container_cluster" "gke" {
   location = var.zone
 
   depends_on = [google_project_service.gke]
+
+  # REQUIRED for managed prometheus
+  monitoring_config {
+    managed_prometheus {
+      enabled = true
+    }
+  }
+
+  # (optional but common)
+  release_channel {
+    channel = "REGULAR"
+  }
 
   networking_mode = "VPC_NATIVE"
   remove_default_node_pool = true
@@ -199,7 +220,7 @@ resource "google_container_node_pool" "gke_pool" {
 
   autoscaling {
     min_node_count = 1
-    max_node_count = 1
+    max_node_count = 2
   }
 }
 
@@ -474,6 +495,13 @@ resource "google_project_iam_member" "ocr_pubsub" {
   project = var.project_id
   role   = "roles/pubsub.subscriber"
   member = "serviceAccount:${google_service_account.ocr.email}"
+}
+
+# Grant Monitoring Viewer role
+resource "google_project_iam_member" "ocr_monitoring_viewer" {
+  project = var.project_id
+  role    = "roles/monitoring.viewer"
+  member  = "serviceAccount:${google_service_account.ocr.email}"
 }
 
 resource "google_project_iam_member" "ocr_vertex" {

@@ -1,0 +1,22 @@
+# Base image
+FROM python:3.11-slim
+
+# Set workdir
+WORKDIR /app
+
+# Copy files
+COPY requirements_ingestion.txt .
+RUN pip install --no-cache-dir -r requirements_ingestion.txt
+
+
+RUN mkdir -p services/ingestion
+RUN mkdir -p services/common
+
+COPY services/ingestion services/ingestion
+COPY services/common services/common
+
+# Expose port
+EXPOSE 8000
+
+# Run FastAPI
+CMD ["uvicorn", "services.ingestion.main:app", "--host", "0.0.0.0", "--port", "8000"]

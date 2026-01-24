@@ -168,7 +168,6 @@ def bigquery_insert(data, table_id: str):
 
 def run_transformer():
     rows = list(fetch_raw_ocr_rows())
-    # logger.info(f"Fetched {len(rows)} rows")
 
     rows_to_insert = []
     for row in rows:
@@ -249,15 +248,6 @@ def run_transformer():
         totals = re.findall(r"\$\s*([\d\s.,]+)", row.text)
 
         if len(totals) >= 3:
-            # data["total_net"] = str(
-            #     normalize_amount(totals[-3])
-            # )
-            # data["total_vat"] = str(
-            #     normalize_amount(totals[-2])
-            # )
-            # data["total_gross"] = str(
-            #     normalize_amount(totals[-1])
-            # )
             data["total_net"] = \
                 normalize_amount(totals[-3])
             data["total_vat"] = \
@@ -265,9 +255,7 @@ def run_transformer():
             data["total_gross"] = \
                 normalize_amount(totals[-1])
 
-        # logger.info(f"Extracted Data: {data}")
-
-        # Helper to ensure string or None
+        
         def to_str(val):
             return str(val) if val is not None else None
 
