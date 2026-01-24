@@ -5,7 +5,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from google.cloud import pubsub_v1
 from google.cloud import storage, documentai, bigquery
-from services.common.logging import get_logger
+from google.cloud.pubsub_v1.types import FlowControl
 from dotenv import load_dotenv
 from tenacity import (
     retry,
@@ -13,6 +13,8 @@ from tenacity import (
     wait_exponential_jitter,
     retry_if_exception_type
 )
+from services.common.logging import get_logger
+from services.common.models import OCRResult
 
 # ------------------------------------------------------------
 # Environment & Logging
@@ -31,8 +33,20 @@ SUBSCRIPTION_ID = os.getenv("PUBSUB_SUBSCRIPTION")
 logger.info(f"PROJECT_ID id: {PROJECT_ID}")
 
 
+# ------------------------------------------------------------
+# Concurrency & Flow Control Settings
+# ------------------------------------------------------------
 MAX_WORKERS = int(os.getenv("MAX_WORKERS", "5"))
 DOC_AI_CONCURRENCY = int(os.getenv("DOC_AI_CONCURRENCY", "2"))
+FLOW_CONTROL = FlowControl(
+    max_messages=10,
+    max_bytes=50 * 1024 * 1024
+) 
+
+# ------------------------------------------------------------
+# Global Variables
+# ------------------------------------------------------------
+event_loop: asyncio.AbstractEventLoop | None = None
     
 # ------------------------------------------------------------
 # GCP Clients (blocking SDKs)
@@ -65,6 +79,7 @@ def signal_handler(sig, frame):
     # global shutdown
     # shutdown = True
     shutdown_event.set()
+    print(shutdown_event.is_set())
 
 # Register signal handlers for graceful shutdown
 signal.signal(signal.SIGTERM, signal_handler)
@@ -79,7 +94,6 @@ class BusinessProcessingError(Exception):
 
 def process_message_sync(message_data: str):
     process_message(message_data)
-
 
 
 # ------------------------------------------------------------
@@ -167,16 +181,23 @@ def process_message(message: str):
         document = result.document
         
         # ------------------ Transform ------------------
-        row = {
-                "correlation_id": correlation_id,
-                "file_name": payload["file_name"],
-                "text": document.text,
-                "page_count": len(document.pages)
-            }
+        # row = {
+        #         "correlation_id": correlation_id,
+        #         "file_name": payload["file_name"],
+        #         "text": document.text,
+        #         "page_count": len(document.pages)
+        #     }
+        ocr_result = OCRResult(
+            correlation_id=correlation_id,
+            file_name=payload["file_name"],
+            text=document.text,
+            page_count=len(document.pages)
+        )
         
         # ------------------ BigQuery ------------------
         table_id = f"{PROJECT_ID}.{BQ_DATASET}.{BQ_TABLE}"
-        errors = bq_client.insert_rows_json(table_id, [row])
+        bq_row = ocr_result.model_dump()
+        errors = bq_client.insert_rows_json(table_id, [bq_row])
 
         if errors:
             raise BusinessProcessingError(
@@ -223,9 +244,6 @@ def process_message(message: str):
 async def handle_message_async(
     message: pubsub_v1.subscriber.message.Message):
     
-    loop = asyncio.get_running_loop()
-    loop.create_task(handle_message_async(message))
-    
     correlation_id = "unknown"
 
     try:
@@ -236,6 +254,7 @@ async def handle_message_async(
         logger.info(f"[{correlation_id}] Message received")
 
         async with docai_semaphore:
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 executor,
                 process_message,
@@ -255,8 +274,9 @@ async def handle_message_async(
 # Pub/Sub Callback Bridge
 # ------------------------------------------------------------
 def callback(message):
-    asyncio.get_event_loop().create_task(
-        handle_message_async(message)
+    asyncio.run_coroutine_threadsafe(
+        handle_message_async(message),
+        event_loop
     )
 
 
@@ -264,9 +284,13 @@ def callback(message):
 # Async Main Loop
 # ------------------------------------------------------------
 async def main():
+    global event_loop
+    event_loop = asyncio.get_running_loop()
+
     streaming_pull_future = subscriber.subscribe(
         subscription_path,
-        callback=callback
+        callback=callback,
+        flow_control=FLOW_CONTROL
     )
 
     logger.info("OCR Worker started (async)")

@@ -6,3 +6,4 @@ python-dotenv
 python-multipart
 jaraco-context>=5.3.0
 tenacity
+pydantic

@@ -15,7 +15,7 @@ spec:
       serviceAccountName: ocr-ksa
       containers:
       - name: ocr
-        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ocr:v7
+        image: asia-south1-docker.pkg.dev/billsight-ai-project/billsight-repo/ocr:v13
         resources:
           requests:
             cpu: "10m"
