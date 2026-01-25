@@ -6,3 +6,7 @@ python-dotenv
 jaraco-context>=5.3.0
 tenacity
 pydantic
+opentelemetry-exporter-gcp-monitoring
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-distro

@@ -15,6 +15,12 @@ from tenacity import (
 )
 from services.common.logging import get_logger
 from services.common.models import OCRResult
+from services.ocr.metrics import (
+    processing_latency,
+    message_counter,
+    failure_counter
+)
+import time
 
 # ------------------------------------------------------------
 # Environment & Logging
@@ -132,6 +138,7 @@ def process_message(message: str):
         message (str): The Pub/Sub message data (JSON string).
     """
     logger.info("Received Pub/Sub message for processing")
+    start_time = time.time()
     payload = json.loads(message)
 
     gcs_path = payload["gcs_path"]
@@ -211,6 +218,9 @@ def process_message(message: str):
 
         logger.info(f"Successfully processed and updated \
             metadata for: {payload.get('file_name')}")
+        
+        # ------------------ Metrics ------------------
+        message_counter.add(1, {"status": "success"})
 
     except BusinessProcessingError as e:
         retry_count = int(metadata.get("retry_count", "0"))
@@ -226,6 +236,9 @@ def process_message(message: str):
         blob.patch()
         logger.warning(f"Failed to process and updated \
             metadata for: {payload.get('file_name')}")
+        
+        failure_counter.add(1, {"error_type": "business"})
+        message_counter.add(1, {"status": "failed"})
         return
 
     except Exception as e:
@@ -235,7 +248,14 @@ def process_message(message: str):
             {str(e)}")
         # Re-raising allows the Pub/Sub subscription to 
         # retry if configured
+        failure_counter.add(1, {"error_type": "unexpected"})
+        message_counter.add(1, {"status": "failed"})
         raise
+    finally:
+        processing_latency.record(
+            time.time() - start_time,
+            {"processor": "document_ai"}
+        )
 
 
 # ------------------------------------------------------------
