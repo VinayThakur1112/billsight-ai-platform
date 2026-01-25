@@ -19,6 +19,12 @@ from datetime import datetime
 import uuid
 import os
 import asyncio
+from services.ingestion.metrics import (
+    processing_latency,
+    message_counter,
+    failure_counter
+)
+import time
 from services.common.logging import get_logger
 logger = get_logger(__name__)
 
@@ -129,6 +135,7 @@ async def upload_bill(file: UploadFile = File(...)):
         dict: Status and path information.
     """
     loop = asyncio.get_running_loop()
+    start_time = time.time()
     try:
         logger.info("Uploading bill: %s", file.filename)
 
@@ -149,6 +156,9 @@ async def upload_bill(file: UploadFile = File(...)):
 
         logger.info("Bill processed successfully: %s", 
                     message["gcs_path"])
+        
+        # ------------------ Metrics ------------------
+        message_counter.add(1, {"status": "success"})
 
         return {
             "status": "success",
@@ -159,5 +169,12 @@ async def upload_bill(file: UploadFile = File(...)):
     except Exception as e:
         logger.exception("Failed to upload bill %s", 
                          file.filename)
+        failure_counter.add(1, {"error_type": "unexpected"})
+        message_counter.add(1, {"status": "failed"})
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        processing_latency.record(
+            time.time() - start_time,
+            {"processor": "document_ai"}
+        )
     

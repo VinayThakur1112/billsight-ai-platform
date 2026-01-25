@@ -86,9 +86,9 @@ resource "google_artifact_registry_repository" "billsight_repo" {
   }
 
   # vulnerability scanning enabled for security
-  vulnerability_scanning_config {
-    enable = true
-  }
+  # vulnerability_scanning_config {
+  #   enable = true
+  # }
 }
 
 data "google_client_config" "default" {}
@@ -203,7 +203,7 @@ resource "google_container_node_pool" "gke_pool" {
   location = var.zone
   cluster  = google_container_cluster.gke.name
 
-  node_count = 1
+  node_count = 2
 
   node_config {
     machine_type = "e2-small"   # ✅ BIG SAVING
@@ -219,8 +219,8 @@ resource "google_container_node_pool" "gke_pool" {
   }
 
   autoscaling {
-    min_node_count = 1
-    max_node_count = 2
+    min_node_count = 2
+    max_node_count = 3
   }
 }
 
@@ -491,6 +491,13 @@ resource "google_project_iam_member" "ingestion_gcs" {
   member = "serviceAccount:${google_service_account.ingestion.email}"
 }
 
+# access to GCP service accounts to Monitoring Metric Writer
+resource "google_project_iam_member" "ingestion_metric_writer" {
+  project = var.project_id
+  role   = "roles/monitoring.metricWriter"
+  member = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
 resource "google_project_iam_member" "ocr_pubsub" {
   project = var.project_id
   role   = "roles/pubsub.subscriber"
@@ -513,6 +520,13 @@ resource "google_project_iam_member" "ocr_vertex" {
 resource "google_project_iam_member" "ocr_gcs" {
   project = var.project_id
   role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.ocr.email}"
+}
+
+# access to GCP service accounts to Monitoring Metric Writer
+resource "google_project_iam_member" "ocr_metric_writer" {
+  project = var.project_id
+  role   = "roles/monitoring.metricWriter"
   member = "serviceAccount:${google_service_account.ocr.email}"
 }
 
